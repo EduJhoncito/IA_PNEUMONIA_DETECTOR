@@ -38,7 +38,7 @@ def registro_neumologo(request):
         if Doctor.objects.filter(email_doctor=email).exists():
             # Si existe, muestra una alerta de JavaScript
             return render(request, 'index.html', {
-                'error_message': 'El usuario con este correo ya está registrado.'
+                'error': 'El usuario con este correo ya está registrado.'
             })
 
         # Crear el nuevo doctor con la contraseña encriptada

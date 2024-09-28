@@ -18,6 +18,9 @@
                 <input type="text" name="colegiatura" placeholder="Colegiatura" />
                 <input type="password" name="password" placeholder="Contraseña" />
                 <button>Crear cuenta</button>
+                {% if error_message %}
+                    <p style="color:red;">{{ error }}</p>
+                {% endif %}
             </form>            
         </div>
         <div class="form-container sign-in-container">
