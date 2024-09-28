@@ -9,3 +9,12 @@ class Doctor(models.Model):
 
     def __str__(self):
         return self.name_doctor
+    
+class Patient(models.Model):
+    id_patient = models.AutoField(primary_key=True)
+    name_patient = models.CharField(max_length=255)
+    dni_patient = models.IntegerField(unique=True)
+    doctor_id = models.ForeignKey(Doctor, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name_patient

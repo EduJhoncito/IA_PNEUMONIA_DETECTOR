@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from .models import Doctor
+from .models import Doctor, Patient
 from django.contrib.auth.hashers import check_password, make_password
 from django import forms
 
@@ -97,3 +97,31 @@ def cambiar_contrasena(request):
 #Vista de home, donde se ingresa al iniciar sesión
 def home(request):
     return render(request,'home.html')
+
+#Vista para agregar paciente
+def registrar_paciente(request):
+    if request.method == 'POST':
+        nombre = request.POST['nombre']
+        dni = request.POST['dni']
+
+        # Asumimos que doctor_id está almacenado en la sesión (o lo obtienes de alguna otra forma)
+        doctor_id = request.session.get('doctor_id')  # Asegúrate de tener esto configurado correctamente
+
+        try:
+            # Obtener el objeto del doctor con el id_doctor correcto
+            doctor = Doctor.objects.get(id_doctor=doctor_id)
+
+            # Crear un nuevo paciente asociado con el doctor
+            paciente = Patient(name_patient=nombre, dni_patient=dni, doctor_id=doctor)
+            paciente.save()
+
+            return redirect('home')  # Cambiar por la vista a la que quieras redirigir
+        except Patient.DoesNotExist:
+            return render(request, 'home.html', {
+                'error_message': 'El paciente ya se encuentra registrado'
+            })
+        except Doctor.DoesNotExist:
+            return render(request, 'home.html', {
+                'error_message': 'No se encontró el doctor'
+            })
+    return render(request, 'home.html')  # La vista del template principal
