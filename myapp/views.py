@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from .models import Doctor
 from django.contrib.auth.hashers import check_password, make_password
+from django import forms
 
 #Vista principal y para iniciar sesión
 def login_neumologo(request):
@@ -57,6 +58,41 @@ def registro_neumologo(request):
         return redirect('home')  # Asegúrate de que 'home' sea la URL correcta
 
     return render(request, 'index.html')
+
+# Vista de recuperar contraseña
+def cambiar_contrasena(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        nueva_contrasena = request.POST.get('nueva_contrasena')
+        confirmar_contrasena = request.POST.get('confirmar_contrasena')
+
+        if not email or not nueva_contrasena or not confirmar_contrasena:
+            return render(request, 'password.html', {
+                'error_message': 'Todos los campos son obligatorios.'
+            })
+
+        if nueva_contrasena != confirmar_contrasena:
+            return render(request, 'password.html', {
+                'error_message': 'Las nuevas contraseñas no coinciden.'
+            })
+
+        try:
+            # Verificar si el email existe en la base de datos
+            doctor = Doctor.objects.get(email_doctor=email)
+            
+            # Actualizar la contraseña del doctor
+            doctor.password_doctor = make_password(nueva_contrasena)# Recuerda encriptar la contraseña si es necesario
+            doctor.save()
+
+            return redirect('login_neumologo')  # Redirige al login o a otra página apropiada
+
+        except Doctor.DoesNotExist:
+            return render(request, 'password.html', {
+                'error_message': 'No se encontró ninguna cuenta con ese correo electrónico.'
+            })
+
+    return render(request, 'password.html')
+
 
 #Vista de home, donde se ingresa al iniciar sesión
 def home(request):
