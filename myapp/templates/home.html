@@ -5,10 +5,58 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Detector de neumonia</title>
-        <link rel="stylesheet" href="{% static 'styles/main.css' %}">
+        <title>Detector de neumonía</title>
+        <link rel="stylesheet" href="{% static 'styles/home.css' %}">
     </head>
     <body>
-        <h1>Hola</h1>
+        <div class="container-load-dni">
+            <p>Ingrese el dni:</p>
+            <input type="text" name="dni" placeholder="DNI">
+        </div>
+        <div class="container-add-buttons">
+            <button id="add-patient-btn">Agregar paciente</button>
+            <br>
+            <button id="add-radiograhp-btn">Agregar radiografía</button>
+        </div>
+        <div class="container-table">
+            <table>
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Radiografía</th>
+                    <th>Detección</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>28/09/2024</td>
+                    <td>28/09/2024</td>
+                    <td>28/09/2024</td>
+                  </tr>
+                </tbody>
+              </table>              
+        </div>
+
+        <!-- Modal para agregar paciente -->
+        <div id="add-patient-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Agregar Paciente</h2>
+                <div class="modal-form">
+                    <form method="POST" action="{% url 'registrar_paciente' %}">
+                        {% csrf_token %}
+                        <label for="nombre">Nombre del paciente:</label>
+                        <input type="text" id="nombre" name="nombre" required>
+                        <br>
+                        <label for="dni">DNI del paciente:</label>
+                        <input type="text" id="dni" name="dni" required>
+                        <br>
+                        <button type="submit">Registrar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <script src="{% static 'scripts/home.js' %}"></script>
     </body>
 </html>
