@@ -1,0 +1,54 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Detector de neumonia</title>
+        <link rel="stylesheet" href="{% static 'styles/main.css' %}">
+    </head>
+    <div class="container" id="container">
+        <div class="form-container sign-up-container">
+            <form method="post" action="{% url 'registro_neumologo' %}">
+                {% csrf_token %}
+                <h1>Crear cuenta</h1>
+                <input type="text" name="nombre" placeholder="Nombre" />
+                <input type="email" name="email" placeholder="Email" />
+                <input type="text" name="colegiatura" placeholder="Colegiatura" />
+                <input type="password" name="password" placeholder="Contraseña" />
+                <button>Crear cuenta</button>
+            </form>            
+        </div>
+        <div class="form-container sign-in-container">
+            <form method="post" action="{% url 'login_neumologo' %}">
+                {% csrf_token %}
+                <h1>Iniciar sesión</h1>
+                <input type="email" name="email" placeholder="Email" />
+                <input type="password" name="password" placeholder="Contraseña" />
+                <button>Ingresar</button>
+                {% if error %}
+                    <p style="color:red;">{{ error }}</p>
+                {% endif %}
+                <p>¿Olvidaste tu contraseña?</a></p>
+            </form>
+        </div>
+        <div class="overlay-container">
+            <div class="overlay">
+                <div class="overlay-panel overlay-left">
+                    <h1>Bienvenido Dr.(a)</h1>
+                    <p>Para crear su cuenta ingrese los datos solicitados</p>
+                    <button class="ghost" id="signIn">Iniciar sesión</button>
+                </div>
+                <div class="overlay-panel overlay-right">
+                    <h1>Bienvenido Dr.(a)</h1>
+                    <p>Ingrese sus datos para iniciar sesión</p>
+                    <button class="ghost" id="signUp">Crear cuenta</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'scripts/main.js' %}"></script>
+    </body>
+</html>
