@@ -104,24 +104,33 @@ def registrar_paciente(request):
         nombre = request.POST['nombre']
         dni = request.POST['dni']
 
-        # Asumimos que doctor_id está almacenado en la sesión (o lo obtienes de alguna otra forma)
-        doctor_id = request.session.get('doctor_id')  # Asegúrate de tener esto configurado correctamente
+        # Verifica que el doctor_id esté en la sesión
+        doctor_id = request.session.get('doctor_id')
+        if not doctor_id:
+            return render(request, 'home.html', {
+                'error_message': 'No se ha encontrado el ID del doctor en la sesión.'
+            })
 
         try:
             # Obtener el objeto del doctor con el id_doctor correcto
             doctor = Doctor.objects.get(id_doctor=doctor_id)
 
+            # Verificar si el paciente ya está registrado
+            if Patient.objects.filter(dni_patient=dni).exists():
+                return render(request, 'home.html', {
+                    'error_message': 'El paciente ya se encuentra registrado'
+                })
+
             # Crear un nuevo paciente asociado con el doctor
             paciente = Patient(name_patient=nombre, dni_patient=dni, doctor_id=doctor)
             paciente.save()
 
-            return redirect('home')  # Cambiar por la vista a la que quieras redirigir
-        except Patient.DoesNotExist:
-            return render(request, 'home.html', {
-                'error_message': 'El paciente ya se encuentra registrado'
-            })
+            # Redirigir a la página de inicio después del registro exitoso
+            return redirect('home')
+
         except Doctor.DoesNotExist:
             return render(request, 'home.html', {
                 'error_message': 'No se encontró el doctor'
             })
-    return render(request, 'home.html')  # La vista del template principal
+
+    return render(request, 'home.html')
