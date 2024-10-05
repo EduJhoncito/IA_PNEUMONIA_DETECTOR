@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from .models import Doctor, Patient
 from django.contrib.auth.hashers import check_password, make_password
+from django import forms
 
 #Vista principal y para iniciar sesión
 def login_neumologo(request):
@@ -33,13 +34,13 @@ def registro_neumologo(request):
         email = request.POST['email']
         colegiatura = request.POST['colegiatura']
         password = request.POST['password']
-        
+
         # Validar colegiatura: 6 dígitos y comienza con 0
         if not (colegiatura.isdigit() and len(colegiatura) == 6 and colegiatura[0] == '0'):
             return render(request, 'index.html', {
                 'error': 'La colegiatura debe tener exactamente 6 números y comenzar con 0.'
-            })
-
+        })
+        
         # Verificar si ya existe un doctor con el mismo email
         if Doctor.objects.filter(email_doctor=email).exists():
             # Si existe, muestra una alerta de JavaScript
@@ -111,12 +112,18 @@ def registrar_paciente(request):
 
         # Validar DNI: debe tener exactamente 8 dígitos
         if not (dni.isdigit() and len(dni) == 8):
-            return render(request, 'home.html', {
+            return render(request, 'patient.html', {
                 'error_message': 'El DNI debe tener exactamente 8 números.'
             })
 
         # Asumimos que doctor_id está almacenado en la sesión (o lo obtienes de alguna otra forma)
         doctor_id = request.session.get('doctor_id')  # Asegúrate de tener esto configurado correctamente
+
+        # Validar si el paciente ya está registrado 
+        if Patient.objects.get(dni_patient=dni):
+            return render(request, 'patient.html', {
+                'error_message': 'El paciente ya se encuentra registrado'
+            })
 
         try:
             # Obtener el objeto del doctor con el id_doctor correcto
@@ -128,11 +135,24 @@ def registrar_paciente(request):
 
             return redirect('home')  # Cambiar por la vista a la que quieras redirigir
         except Patient.DoesNotExist:
-            return render(request, 'home.html', {
+            return render(request, 'patient.html', {
                 'error_message': 'El paciente ya se encuentra registrado'
             })
         except Doctor.DoesNotExist:
-            return render(request, 'home.html', {
+            return render(request, 'patient.html', {
                 'error_message': 'No se encontró el doctor'
             })
-    return render(request, 'home.html')  # La vista del template principal
+    return render(request, 'patient.html')  # La vista del template principal
+
+def buscar_paciente(request):
+    if request.method == 'GET':
+        dni = request.GET.get('dni')
+
+        if dni:
+            try:
+                paciente = Patient.objects.get(dni_patient=dni)
+                return render(request, 'home.html', {'paciente': paciente})
+            except Patient.DoesNotExist:
+                return render(request, 'home.html', {'error_message': 'No se encontró ningún paciente con ese DNI.'})
+    
+    return redirect('home')
