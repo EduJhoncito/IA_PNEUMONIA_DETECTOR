@@ -104,7 +104,7 @@ def cambiar_contrasena(request):
 def home(request):
     return render(request,'home.html')
 
-#Vista para agregar paciente
+# Vista para agregar paciente 
 def registrar_paciente(request):
     if request.method == 'POST':
         nombre = request.POST['nombre']
@@ -120,7 +120,7 @@ def registrar_paciente(request):
         doctor_id = request.session.get('doctor_id')  # Asegúrate de tener esto configurado correctamente
 
         # Validar si el paciente ya está registrado 
-        if Patient.objects.get(dni_patient=dni):
+        if Patient.objects.filter(dni_patient=dni).exists():
             return render(request, 'patient.html', {
                 'error_message': 'El paciente ya se encuentra registrado'
             })
@@ -134,15 +134,12 @@ def registrar_paciente(request):
             paciente.save()
 
             return redirect('home')  # Cambiar por la vista a la que quieras redirigir
-        except Patient.DoesNotExist:
-            return render(request, 'patient.html', {
-                'error_message': 'El paciente ya se encuentra registrado'
-            })
         except Doctor.DoesNotExist:
             return render(request, 'patient.html', {
                 'error_message': 'No se encontró el doctor'
             })
-    return render(request, 'patient.html')  # La vista del template principal
+            
+    return render(request, 'patient.html')  # La vista del template principal.
 
 def buscar_paciente(request):
     if request.method == 'GET':
