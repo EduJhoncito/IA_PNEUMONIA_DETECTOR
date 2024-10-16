@@ -1,5 +1,5 @@
 {% load static %}
-
+{% load custom_filters %}
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -20,34 +20,47 @@
         <div class="container-add-buttons">
             <a id="add-patient-btn" href="{% url 'registrar_paciente' %}">Agregar paciente</a>
             <br>
-            <a id="add-radiograhp-btn" href="#">Agregar radiografía</a>
+            {% if paciente %}
+              <a id="add-radiograhp-btn" href="#">Agregar radiografía</a>
+              <input type="file" id="file-input" name="radiograph_image" accept="image/*" style="display: none;">
+            {% endif %} 
         </div>
 
         {% if paciente %}
             <h3>Datos del paciente:</h3>
             <p>Nombre: {{ paciente.name_patient }}</p>
             <p>DNI: {{ paciente.dni_patient }}</p>
+            
+            <div class="container-table">
+                <table>
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Radiografía</th>
+                        <th>Detección</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for radiografia in radiografias %}
+                        <tr>
+                            <td>{{ radiografia.date_radiograph }}</td>
+                            <td>
+                                <img src="data:image/png;base64,{{ radiografia.image_radiograph|b64encode }}" width="50" />
+                            </td>
+                            <td>{{ radiografia.analisis.detection_radiograph }}</td>
+                        </tr>
+                      {% empty %}
+                        <tr>
+                            <td colspan="3">No hay radiografías para este paciente.</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                </table>              
+            </div>
         {% else %}
             <p>{{ error_message }}</p>
         {% endif %}
 
-        <div class="container-table">
-            <table>
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Radiografía</th>
-                    <th>Detección</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>28/09/2024</td>
-                    <td>28/09/2024</td>
-                    <td>28/09/2024</td>
-                  </tr>
-                </tbody>
-              </table>              
-        </div>
+        <script src="{% static 'scripts/home.js' %}"></script>
       </body>
 </html>
