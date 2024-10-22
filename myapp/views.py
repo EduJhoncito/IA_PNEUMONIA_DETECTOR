@@ -161,7 +161,8 @@ def buscar_paciente(request):
     paciente = Patient.objects.filter(dni_patient=dni).first()
     
     if paciente:
-        radiografias = Radiograph.objects.filter(patient=paciente).select_related('analisis')
+        # Aquí reemplazas select_related con prefetch_related
+        radiografias = Radiograph.objects.filter(patient=paciente).prefetch_related('analysis_set')
     else:
         radiografias = []
 
@@ -173,10 +174,17 @@ def buscar_paciente(request):
 
 def agregar_radiografia(request, paciente_id):
     if request.method == 'POST':
+        print("Petición POST recibida")
+        
+        if 'radiograph_image' not in request.FILES:
+            print("No se ha enviado ningún archivo de imagen.")
+            return JsonResponse({'success': False, 'error': 'No se ha enviado ningún archivo de imagen.'})
+        
         image_file = request.FILES['radiograph_image']
+        print(f"Archivo recibido: {image_file.name}, tamaño: {image_file.size} bytes")
+        
         paciente = Patient.objects.get(id_patient=paciente_id)
 
-        # Guardar la radiografía en la base de datos
         nueva_radiografia = Radiograph(
             date_radiograph=datetime.date.today(),
             image_radiograph=image_file.read(),
@@ -184,20 +192,13 @@ def agregar_radiografia(request, paciente_id):
         )
         nueva_radiografia.save()
 
-        # Simular el análisis de detección de neumonía (aquí podrías llamar a tu IA)
-        nuevo_analisis = Analysis(
-            radiograph=nueva_radiografia,
-            detection_radiograph="No se detecta neumonía",  # Resultado simulado
-            prediction_radiograph="Predicción no disponible"  # Predicción simulada
-        )
-        nuevo_analisis.save()
-
-        # Retorna la respuesta JSON con la información para agregar la fila en la tabla
+        print("Radiografía guardada correctamente.")
         imagen_base64 = base64.b64encode(nueva_radiografia.image_radiograph).decode('utf-8')
+
         return JsonResponse({
             'success': True,
             'fecha': nueva_radiografia.date_radiograph,
             'imagen': imagen_base64,
-            'deteccion': nuevo_analisis.detection_radiograph,
+            'deteccion': 'Pendiente'
         })
     return JsonResponse({'success': False})

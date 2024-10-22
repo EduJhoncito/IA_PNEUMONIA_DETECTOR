@@ -21,42 +21,64 @@
             <a id="add-patient-btn" href="{% url 'registrar_paciente' %}">Agregar paciente</a>
             <br>
             {% if paciente %}
-              <a id="add-radiograhp-btn" href="#">Agregar radiografía</a>
-              <input type="file" id="file-input" name="radiograph_image" accept="image/*" style="display: none;">
-            {% endif %} 
+                <a id="add-radiograhp-btn" href="#">Agregar radiografía</a>
+                <input type="file" id="file-input" name="radiograph_image" accept="image/*" style="display: none;">
+
+                <!-- Aquí incluimos el token CSRF directamente en el HTML -->
+                <script>
+                    // Incluimos el token CSRF y el ID del paciente dentro del script
+                    const csrftoken = "{{ csrf_token }}";  // Obtén el token CSRF directamente desde Django
+                    const pacienteId = "{{ paciente.id_patient }}";  // El ID del paciente desde Django
+                </script>
+            {% endif %}
         </div>
 
         {% if paciente %}
             <h3>Datos del paciente:</h3>
             <p>Nombre: {{ paciente.name_patient }}</p>
             <p>DNI: {{ paciente.dni_patient }}</p>
-            
+
             <div class="container-table">
-                <table>
-                    <thead>
-                      <tr>
-                        <th>Fecha</th>
-                        <th>Radiografía</th>
-                        <th>Detección</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+              <table>
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Radiografía</th>
+                      <th>Detección</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% if radiografias %}
                       {% for radiografia in radiografias %}
                         <tr>
-                            <td>{{ radiografia.date_radiograph }}</td>
+                            <!-- Forzar el formato de la fecha a YYYY-MM-DD -->
+                            <td>{{ radiografia.date_radiograph|date:"Y-m-d" }}</td>
+          
+                            <!-- Mostrar la imagen de la radiografía -->
                             <td>
                                 <img src="data:image/png;base64,{{ radiografia.image_radiograph|b64encode }}" width="50" />
                             </td>
-                            <td>{{ radiografia.analisis.detection_radiograph }}</td>
-                        </tr>
-                      {% empty %}
-                        <tr>
-                            <td colspan="3">No hay radiografías para este paciente.</td>
+          
+                            <!-- Si no hay detección, mostrar "Pendiente" -->
+                            <td>
+                                {% if radiografia.analisis.detection_radiograph %}
+                                    {{ radiografia.analisis.detection_radiograph }}
+                                {% else %}
+                                    Pendiente
+                                {% endif %}
+                            </td>
                         </tr>
                       {% endfor %}
-                    </tbody>
-                </table>              
-            </div>
+                    {% else %}
+                      <tr>
+                        <td colspan="3">No se registraton radiografias.</td>
+                      </tr>
+                    {% endif %}
+                  </tbody>
+              </table>              
+          </div>
+          
+          
         {% else %}
             <p>{{ error_message }}</p>
         {% endif %}

@@ -28,9 +28,6 @@ class Radiograph(models.Model):
     image_radiograph = models.BinaryField()  # Imagen de la radiografía almacenada como BLOB
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE)  # Relación con el paciente (FK)
 
-    def __str__(self):
-        return f"Radiografía {self.id_radiograph} - Paciente {self.patient}"
-
 # Modelo para la tabla de Análisis 
 class Analysis(models.Model):
     id_analysis = models.AutoField(primary_key=True)
