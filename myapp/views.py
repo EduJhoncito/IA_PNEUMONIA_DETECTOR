@@ -1,7 +1,22 @@
 from django.shortcuts import render, redirect
-from .models import Doctor, Patient
+from .models import Doctor, Patient, Radiograph, Analysis
 from django.contrib.auth.hashers import check_password, make_password
+import base64
+from django.http import JsonResponse
+import datetime
+from django import template
+from django.utils.safestring import mark_safe
 from django import forms
+
+register = template.Library()
+
+@register.filter(name='b64encode')
+def b64encode(value):
+    # Asegúrate de que el valor sea un objeto de bytes
+    if isinstance(value, bytes):
+        encoded_value = base64.b64encode(value).decode('utf-8')
+        return mark_safe(encoded_value)
+    return ''
 
 #Vista principal y para iniciar sesión
 def login_neumologo(request):
@@ -142,14 +157,48 @@ def registrar_paciente(request):
     return render(request, 'patient.html')  # La vista del template principal.
 
 def buscar_paciente(request):
-    if request.method == 'GET':
-        dni = request.GET.get('dni')
-
-        if dni:
-            try:
-                paciente = Patient.objects.get(dni_patient=dni)
-                return render(request, 'home.html', {'paciente': paciente})
-            except Patient.DoesNotExist:
-                return render(request, 'home.html', {'error_message': 'No se encontró ningún paciente con ese DNI.'})
+    dni = request.GET.get('dni')
+    paciente = Patient.objects.filter(dni_patient=dni).first()
     
-    return redirect('home')
+    if paciente:
+        # Aquí reemplazas select_related con prefetch_related
+        radiografias = Radiograph.objects.filter(patient=paciente).prefetch_related('analysis_set')
+    else:
+        radiografias = []
+
+    return render(request, 'home.html', {
+        'paciente': paciente,
+        'radiografias': radiografias,
+        'error_message': 'No se encontró al paciente' if not paciente else ''
+    })
+
+def agregar_radiografia(request, paciente_id):
+    if request.method == 'POST':
+        print("Petición POST recibida")
+        
+        if 'radiograph_image' not in request.FILES:
+            print("No se ha enviado ningún archivo de imagen.")
+            return JsonResponse({'success': False, 'error': 'No se ha enviado ningún archivo de imagen.'})
+        
+        image_file = request.FILES['radiograph_image']
+        print(f"Archivo recibido: {image_file.name}, tamaño: {image_file.size} bytes")
+        
+        paciente = Patient.objects.get(id_patient=paciente_id)
+
+        nueva_radiografia = Radiograph(
+            date_radiograph=datetime.date.today(),
+            image_radiograph=image_file.read(),
+            patient=paciente
+        )
+        nueva_radiografia.save()
+
+        print("Radiografía guardada correctamente.")
+        imagen_base64 = base64.b64encode(nueva_radiografia.image_radiograph).decode('utf-8')
+
+        return JsonResponse({
+            'success': True,
+            'fecha': nueva_radiografia.date_radiograph,
+            'imagen': imagen_base64,
+            'deteccion': 'Pendiente'
+        })
+    return JsonResponse({'success': False})
