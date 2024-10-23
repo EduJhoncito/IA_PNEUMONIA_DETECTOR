@@ -52,7 +52,7 @@
                       {% for radiografia in radiografias %}
                         <tr>
                             <!-- Forzar el formato de la fecha a YYYY-MM-DD -->
-                            <td>{{ radiografia.date_radiograph|date:"Y-m-d" }}</td>
+                            <td>{{ radiografia.date_radiograph|date:"d-m-Y" }}</td>
           
                             <!-- Mostrar la imagen de la radiografía -->
                             <td>
