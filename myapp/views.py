@@ -8,6 +8,15 @@ from django import template
 from django.utils.safestring import mark_safe
 from django import forms
 from .ia_model import predict_image_class
+import os
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
+from .ia_model import predict_image_class
+import datetime
+
+# Define los directorios donde se guardarán las imágenes
+CARPETA_SIN_PREDICCION = 'imagenes_sin_prediccion/'
+CARPETA_CON_PREDICCION = 'imagenes_con_prediccion/'
 
 register = template.Library()
 
@@ -178,16 +187,21 @@ def agregar_radiografia(request, paciente_id):
         image_file = request.FILES['radiograph_image']
         paciente = Patient.objects.get(id_patient=paciente_id)
 
-        # Guardar la radiografía
+        # Guardar la imagen en la carpeta "sin predicción"
+        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, CARPETA_SIN_PREDICCION))
+        filename = fs.save(image_file.name, image_file)
+        path_imagen_sin_prediccion = fs.path(filename)
+
+        # Guardar el path de la imagen en la base de datos (directorio sin predicción)
         nueva_radiografia = Radiograph(
             date_radiograph=datetime.date.today(),
-            image_radiograph=image_file.read(),  # Guardamos la imagen en binario
+            image_radiograph=os.path.join(CARPETA_SIN_PREDICCION, filename),  # Guardar solo el path relativo
             patient=paciente
         )
         nueva_radiografia.save()
 
-        # Preprocesar la imagen y realizar la predicción
-        predicted_class, accuracy = predict_image_class(image_file)
+        # Realizar la predicción utilizando el path de la imagen
+        predicted_class, accuracy = predict_image_class(path_imagen_sin_prediccion)
 
         # Mapear la clase a un resultado de detección amigable
         if predicted_class == 'BACTERIANA':
@@ -199,6 +213,14 @@ def agregar_radiografia(request, paciente_id):
         else:
             deteccion = 'Sano'
 
+        # Mover la imagen a la carpeta "con predicción"
+        path_imagen_con_prediccion = os.path.join(settings.MEDIA_ROOT, CARPETA_CON_PREDICCION, filename)
+        os.rename(path_imagen_sin_prediccion, path_imagen_con_prediccion)
+
+        # Actualizar la ruta de la imagen en la base de datos (directorio con predicción)
+        nueva_radiografia.image_radiograph = os.path.join(CARPETA_CON_PREDICCION, filename)
+        nueva_radiografia.save()
+
         # Guardar el análisis en la base de datos
         nuevo_analisis = Analysis(
             radiograph=nueva_radiografia,
@@ -207,14 +229,11 @@ def agregar_radiografia(request, paciente_id):
         )
         nuevo_analisis.save()
 
-        # Codificar la imagen para mostrarla en la tabla
-        imagen_base64 = base64.b64encode(nueva_radiografia.image_radiograph).decode('utf-8')
-
         # Retornar los datos para actualizar la tabla en el frontend
         return JsonResponse({
             'success': True,
             'fecha': nueva_radiografia.date_radiograph.strftime("%Y-%m-%d"),
-            'imagen': imagen_base64,
+            'imagen': os.path.join(settings.MEDIA_URL, nueva_radiografia.image_radiograph),  # Devolvemos la URL de la imagen guardada
             'deteccion': nuevo_analisis.detection_radiograph,
         })
 

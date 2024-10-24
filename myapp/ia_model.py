@@ -2,9 +2,8 @@ import numpy as np
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 import os
-from tensorflow.keras.models import load_model
 
-model_path = 'D:/CICLO 8/Ingeniería de software 3/IA_PNEUMONIA_DETECTOR/models/85_mobileNetV2.h5'
+model_path = r'D:\CICLO 8\Ingeniería de software 3\IA_PNEUMONIA_DETECTOR\myapp\models\85_mobileNetV2.h5'
 
 if not os.path.exists(model_path):
     raise FileNotFoundError(f"El archivo del modelo no se encuentra en: {model_path}")
