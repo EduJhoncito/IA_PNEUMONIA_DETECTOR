@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (file) {
                 const formData = new FormData();
                 formData.append('radiograph_image', file);
-
+        
                 // Enviar el archivo a través de una solicitud POST a Django
                 fetch(`/agregar_radiografia/${pacienteId}`, {
                     method: 'POST',
@@ -33,13 +33,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (emptyMessageRow) {
                             emptyMessageRow.parentNode.removeChild(emptyMessageRow);
                         }
-
+        
                         // Agregar la nueva fila a la tabla automáticamente con la información de la radiografía
                         const newRow = `
                             <tr>
                                 <td>${data.fecha}</td>
                                 <td><img src="data:image/png;base64,${data.imagen}" width="50" /></td>
-                                <td>Pendiente</td>
+                                <td>${data.deteccion ? data.deteccion : 'Pendiente'}</td>  <!-- Mostrar la detección real -->
                             </tr>
                         `;
                         document.querySelector('table tbody').innerHTML += newRow;
@@ -52,6 +52,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('Hubo un problema al subir la radiografía');
                 });
             }
-        });
+        });        
     }
 });

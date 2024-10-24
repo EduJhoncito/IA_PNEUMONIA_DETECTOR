@@ -7,6 +7,7 @@ import datetime
 from django import template
 from django.utils.safestring import mark_safe
 from django import forms
+from .ia_model import predict_image_class
 
 register = template.Library()
 
@@ -174,31 +175,47 @@ def buscar_paciente(request):
 
 def agregar_radiografia(request, paciente_id):
     if request.method == 'POST':
-        print("Petición POST recibida")
-        
-        if 'radiograph_image' not in request.FILES:
-            print("No se ha enviado ningún archivo de imagen.")
-            return JsonResponse({'success': False, 'error': 'No se ha enviado ningún archivo de imagen.'})
-        
         image_file = request.FILES['radiograph_image']
-        print(f"Archivo recibido: {image_file.name}, tamaño: {image_file.size} bytes")
-        
         paciente = Patient.objects.get(id_patient=paciente_id)
 
+        # Guardar la radiografía
         nueva_radiografia = Radiograph(
             date_radiograph=datetime.date.today(),
-            image_radiograph=image_file.read(),
+            image_radiograph=image_file.read(),  # Guardamos la imagen en binario
             patient=paciente
         )
         nueva_radiografia.save()
 
-        print("Radiografía guardada correctamente.")
+        # Preprocesar la imagen y realizar la predicción
+        predicted_class, accuracy = predict_image_class(image_file)
+
+        # Mapear la clase a un resultado de detección amigable
+        if predicted_class == 'BACTERIANA':
+            deteccion = 'Neumonía bacteriana'
+        elif predicted_class == 'NORMAL':
+            deteccion = 'Neumonía normal'
+        elif predicted_class == 'VIRAL':
+            deteccion = 'Neumonía vírica'
+        else:
+            deteccion = 'Sano'
+
+        # Guardar el análisis en la base de datos
+        nuevo_analisis = Analysis(
+            radiograph=nueva_radiografia,
+            detection_radiograph=deteccion,
+            prediction_radiograph=f"Precisión: {accuracy:.2f}%"
+        )
+        nuevo_analisis.save()
+
+        # Codificar la imagen para mostrarla en la tabla
         imagen_base64 = base64.b64encode(nueva_radiografia.image_radiograph).decode('utf-8')
 
+        # Retornar los datos para actualizar la tabla en el frontend
         return JsonResponse({
             'success': True,
-            'fecha': nueva_radiografia.date_radiograph,
+            'fecha': nueva_radiografia.date_radiograph.strftime("%Y-%m-%d"),
             'imagen': imagen_base64,
-            'deteccion': 'Pendiente'
+            'deteccion': nuevo_analisis.detection_radiograph,
         })
+
     return JsonResponse({'success': False})
