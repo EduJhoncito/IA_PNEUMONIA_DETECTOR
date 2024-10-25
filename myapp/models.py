@@ -22,11 +22,13 @@ class Patient(models.Model):
         return self.name_patient  
 
 class Radiograph(models.Model):
+    id = models.AutoField(primary_key=True)
     date_radiograph = models.DateField()
-    image_radiograph = models.CharField(max_length=255)  # Guardaremos el path en este campo
+    image_radiograph = models.CharField(max_length=255)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
 
 class Analysis(models.Model):
+    id = models.AutoField(primary_key=True)
     radiograph = models.ForeignKey(Radiograph, on_delete=models.CASCADE)
     detection_radiograph = models.CharField(max_length=255)
     prediction_radiograph = models.CharField(max_length=255)

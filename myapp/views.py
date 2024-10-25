@@ -187,6 +187,13 @@ def agregar_radiografia(request, paciente_id):
         image_file = request.FILES['radiograph_image']
         paciente = Patient.objects.get(id_patient=paciente_id)
 
+        # Crear directorios si no existen
+        if not os.path.exists(os.path.join(settings.MEDIA_ROOT, CARPETA_SIN_PREDICCION)):
+            os.makedirs(os.path.join(settings.MEDIA_ROOT, CARPETA_SIN_PREDICCION))
+
+        if not os.path.exists(os.path.join(settings.MEDIA_ROOT, CARPETA_CON_PREDICCION)):
+            os.makedirs(os.path.join(settings.MEDIA_ROOT, CARPETA_CON_PREDICCION))
+
         # Guardar la imagen en la carpeta "sin predicción"
         fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, CARPETA_SIN_PREDICCION))
         filename = fs.save(image_file.name, image_file)
