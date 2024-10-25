@@ -236,12 +236,12 @@ def agregar_radiografia(request, paciente_id):
         )
         nuevo_analisis.save()
 
-        # Retornar los datos para actualizar la tabla en el frontend
-        return JsonResponse({
-            'success': True,
-            'fecha': nueva_radiografia.date_radiograph.strftime("%Y-%m-%d"),
-            'imagen': os.path.join(settings.MEDIA_URL, nueva_radiografia.image_radiograph),  # Devolvemos la URL de la imagen guardada
-            'deteccion': nuevo_analisis.detection_radiograph,
-        })
+    # Retornar los datos para actualizar la tabla en el frontend
+    return JsonResponse({
+        'success': True,
+        'fecha': nueva_radiografia.date_radiograph.strftime("%Y-%m-%d"),
+        'imagen': os.path.join(settings.MEDIA_URL, nueva_radiografia.image_radiograph),  # Devolvemos la URL completa de la imagen guardada
+        'deteccion': nuevo_analisis.detection_radiograph,
+    })
 
     return JsonResponse({'success': False})

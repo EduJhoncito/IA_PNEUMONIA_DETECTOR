@@ -11,10 +11,14 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os  # Asegúrate de que esta importación esté en el archivo.
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# MEDIA CONFIGURATION (Agregar estas dos líneas)
+MEDIA_URL = '/media/'  # La URL pública base para los archivos multimedia (imágenes).
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # El directorio donde se almacenarán los archivos multimedia en el servidor.
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/

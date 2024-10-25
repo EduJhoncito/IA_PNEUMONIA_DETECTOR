@@ -11,7 +11,4 @@ urlpatterns = [
     path('registrar_paciente/', views.registrar_paciente, name='registrar_paciente'),
     path('buscar_paciente/', views.buscar_paciente, name='buscar_paciente'),
     path('agregar_radiografia/<int:paciente_id>', views.agregar_radiografia, name='agregar_radiografia'),
-]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

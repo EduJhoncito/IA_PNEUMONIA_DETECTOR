@@ -56,9 +56,9 @@
           
                             <!-- Mostrar la imagen de la radiografía -->
                             <td>
-                                <img src="data:image/png;base64,{{ radiografia.image_radiograph|b64encode }}" width="50" />
+                              <img src="{{ MEDIA_URL }}{{ imagen }}" alt="Radiografía" width="150" height="150">
                             </td>
-          
+                                      
                             <!-- Si no hay detección, mostrar "Pendiente" -->
                             <td>
                                 {% if radiografia.analisis.detection_radiograph %}
