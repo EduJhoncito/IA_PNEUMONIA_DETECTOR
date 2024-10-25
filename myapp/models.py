@@ -19,22 +19,16 @@ class Patient(models.Model):
     doctor_id = models.ForeignKey(Doctor, on_delete=models.CASCADE)
 
     def __str__(self):
-        return self.name_patient
+        return self.name_patient  
 
-# Modelo para la tabla de Radiografías 
 class Radiograph(models.Model):
-    id_radiograph = models.AutoField(primary_key=True)
-    date_radiograph = models.DateField()  # Fecha de la radiografía
-    image_radiograph = models.BinaryField()  # Imagen de la radiografía almacenada como BLOB
-    patient = models.ForeignKey('Patient', on_delete=models.CASCADE)  # Relación con el paciente (FK)
+    id = models.AutoField(primary_key=True)
+    date_radiograph = models.DateField()
+    image_radiograph = models.CharField(max_length=255)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
 
-# Modelo para la tabla de Análisis 
 class Analysis(models.Model):
-    id_analysis = models.AutoField(primary_key=True)
-    radiograph = models.ForeignKey(Radiograph, on_delete=models.CASCADE)  # Relación con la radiografía (FK)
-    detection_radiograph = models.TextField()  # Resultado de la detección (Texto)
-    heat_image_radiograph = models.BinaryField(blank=True, null=True)  # Imagen de calor (BLOB), opcional
-    prediction_radiograph = models.TextField()  # Resultado de la predicción (Texto)
-
-    def __str__(self):
-        return f"Análisis {self.id_analysis} - Radiografía {self.radiograph.id_radiograph}"
+    id = models.AutoField(primary_key=True)
+    radiograph = models.ForeignKey(Radiograph, on_delete=models.CASCADE)
+    detection_radiograph = models.CharField(max_length=255)
+    prediction_radiograph = models.CharField(max_length=255)

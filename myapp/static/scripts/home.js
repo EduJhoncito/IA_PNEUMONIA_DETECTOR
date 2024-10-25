@@ -1,57 +1,93 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const addRadiographBtn = document.getElementById('add-radiograhp-btn');
-    const fileInput = document.getElementById('file-input');
+document.addEventListener("DOMContentLoaded", function() {
+    const fileInput = document.getElementById("file-input");
+    const addRadiographButton = document.getElementById("add-radiograhp-btn");
+    
+    addRadiographButton.addEventListener("click", function() {
+        fileInput.click();  // Simula un clic para abrir el selector de archivos
+    });
 
-    // Verificamos si los elementos necesarios existen antes de añadir los eventos
-    if (addRadiographBtn && fileInput) {
-        // Al hacer clic en el botón "Agregar radiografía", abrimos el explorador de archivos
-        addRadiographBtn.addEventListener('click', function(event) {
-            event.preventDefault();
-            fileInput.click();  // Esto debería abrir el explorador de archivos
-        });
+    fileInput.addEventListener("change", function() {
+        const formData = new FormData();
+        formData.append('radiograph_image', fileInput.files[0]);
 
-        // Cuando el archivo es seleccionado, se captura el evento "change"
-        fileInput.addEventListener('change', function() {
-            const file = fileInput.files[0];
-            if (file) {
-                const formData = new FormData();
-                formData.append('radiograph_image', file);
+        // Aquí obtén el token CSRF y el ID del paciente
+        formData.append('csrfmiddlewaretoken', csrftoken);
 
-                // Enviar el archivo a través de una solicitud POST a Django
-                fetch(`/agregar_radiografia/${pacienteId}`, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRFToken': csrftoken  // Aquí agregamos el token CSRF obtenido desde la plantilla
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Remover la fila que contiene el mensaje "No hay radiografías para este paciente."
-                        const emptyMessageRow = document.querySelector('tr td[colspan="3"]');
-                        if (emptyMessageRow) {
-                            emptyMessageRow.parentNode.removeChild(emptyMessageRow);
-                        }
+        fetch(`/agregar_radiografia/${pacienteId}`, {
+            method: 'POST',
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Si la subida fue exitosa, agrega la nueva fila a la tabla sin recargar la página
+                const tableBody = document.querySelector("table tbody");
+                const newRow = document.createElement("tr");
 
-                        // Agregar la nueva fila a la tabla automáticamente con la información de la radiografía
-                        const newRow = `
-                            <tr>
-                                <td>${data.fecha}</td>
-                                <td><img src="data:image/png;base64,${data.imagen}" width="50" /></td>
-                                <td>Pendiente</td>
-                            </tr>
-                        `;
-                        document.querySelector('table tbody').innerHTML += newRow;
-                    } else {
-                        alert('Error al subir la radiografía');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Hubo un problema al subir la radiografía');
-                });
+                newRow.innerHTML = `
+                    <td>${data.fecha}</td>
+                    <td><img src="${data.imagen}" alt="Radiografía" style="max-width: 100px;" /></td>
+                    <td>${data.deteccion}</td>
+                `;
+
+                tableBody.appendChild(newRow);
+
+                // Ocultar el mensaje de "No se registraron radiografías"
+                const noRecordsMessage = document.querySelector("table tbody tr td[colspan='3']");
+                if (noRecordsMessage) {
+                    noRecordsMessage.style.display = 'none';
+                }
+            } else {
+                alert("Hubo un problema al subir la radiografía.");
             }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("Ocurrió un error al subir la radiografía.");
         });
-    }
+    });
 });
+
+// document.addEventListener("DOMContentLoaded", function() {
+//     const fileInput = document.getElementById("file-input");
+//     const addRadiographButton = document.getElementById("add-radiograhp-btn");
+    
+//     addRadiographButton.addEventListener("click", function() {
+//         fileInput.click();  // Simula un clic para abrir el selector de archivos
+//     });
+
+//     fileInput.addEventListener("change", function() {
+//         const formData = new FormData();
+//         formData.append('radiograph_image', fileInput.files[0]);
+
+//         // Aquí obtén el token CSRF y el ID del paciente
+//         formData.append('csrfmiddlewaretoken', csrftoken);
+
+//         fetch(`/agregar_radiografia/${pacienteId}`, {
+//             method: 'POST',
+//             body: formData,
+//         })
+//         .then(response => response.json())
+//         .then(data => {
+//             if (data.success) {
+//                 // Si la subida fue exitosa, agrega la nueva fila a la tabla sin recargar la página
+//                 const tableBody = document.querySelector("table tbody");
+//                 const newRow = document.createElement("tr");
+
+//                 newRow.innerHTML = `
+//                     <td>${data.fecha}</td>
+//                     <td><img src="${data.imagen}" alt="Radiografía" style="max-width: 100px;" /></td>
+//                     <td>${data.deteccion}</td>
+//                 `;
+
+//                 tableBody.appendChild(newRow);
+//             } else {
+//                 alert("Hubo un problema al subir la radiografía.");
+//             }
+//         })
+//         .catch(error => {
+//             console.error("Error:", error);
+//             alert("Ocurrió un error al subir la radiografía.");
+//         });
+//     });
+// });

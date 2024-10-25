@@ -7,12 +7,21 @@ import datetime
 from django import template
 from django.utils.safestring import mark_safe
 from django import forms
+from .ia_model import predict_image_class
+import os
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
+from .ia_model import predict_image_class
+import datetime
+
+# Define los directorios donde se guardarán las imágenes
+CARPETA_SIN_PREDICCION = 'imagenes_sin_prediccion/'
+CARPETA_CON_PREDICCION = 'imagenes_con_prediccion/'
 
 register = template.Library()
 
 @register.filter(name='b64encode')
 def b64encode(value):
-    # Asegúrate de que el valor sea un objeto de bytes
     if isinstance(value, bytes):
         encoded_value = base64.b64encode(value).decode('utf-8')
         return mark_safe(encoded_value)
@@ -161,44 +170,76 @@ def buscar_paciente(request):
     paciente = Patient.objects.filter(dni_patient=dni).first()
     
     if paciente:
-        # Aquí reemplazas select_related con prefetch_related
+        # Aquí reemplazas select_related con prefetch_related para optimizar
         radiografias = Radiograph.objects.filter(patient=paciente).prefetch_related('analysis_set')
+        for radiografia in radiografias:
+            # Asegúrate de que cada radiografía tiene un análisis asociado
+            radiografia.analysis = radiografia.analysis_set.first() if radiografia.analysis_set.exists() else None
     else:
         radiografias = []
 
     return render(request, 'home.html', {
         'paciente': paciente,
         'radiografias': radiografias,
-        'error_message': 'No se encontró al paciente' if not paciente else ''
+        'error_message': 'No se encontró al paciente' if not paciente else '',
+        'MEDIA_URL': settings.MEDIA_URL,  # Pasar la URL base de los archivos multimedia
     })
 
 def agregar_radiografia(request, paciente_id):
     if request.method == 'POST':
-        print("Petición POST recibida")
-        
-        if 'radiograph_image' not in request.FILES:
-            print("No se ha enviado ningún archivo de imagen.")
-            return JsonResponse({'success': False, 'error': 'No se ha enviado ningún archivo de imagen.'})
-        
         image_file = request.FILES['radiograph_image']
-        print(f"Archivo recibido: {image_file.name}, tamaño: {image_file.size} bytes")
-        
         paciente = Patient.objects.get(id_patient=paciente_id)
 
+        # Guardar la imagen en la carpeta "sin predicción"
+        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, CARPETA_SIN_PREDICCION))
+        filename = fs.save(image_file.name, image_file)
+        path_imagen_sin_prediccion = fs.path(filename)
+
+        # Guardar el path de la imagen en la base de datos (directorio sin predicción)
         nueva_radiografia = Radiograph(
-            date_radiograph=datetime.date.today(),
-            image_radiograph=image_file.read(),
+            date_radiograph=datetime.date.today(),  # Formateo correcto de la fecha
+            image_radiograph=os.path.join(CARPETA_SIN_PREDICCION, filename),
             patient=paciente
         )
         nueva_radiografia.save()
 
-        print("Radiografía guardada correctamente.")
-        imagen_base64 = base64.b64encode(nueva_radiografia.image_radiograph).decode('utf-8')
+        # Realizar la predicción utilizando el path de la imagen
+        predicted_class, accuracy = predict_image_class(path_imagen_sin_prediccion)
 
+        # Mapear la clase a un resultado de detección amigable
+        deteccion = {
+            'BACTERIANA': 'Neumonía bacteriana',
+            'NORMAL': 'Sano',
+            'VIRAL': 'Neumonía vírica',
+        }.get(predicted_class, 'Sano')
+
+        # Mover la imagen a la carpeta "con predicción"
+        path_imagen_con_prediccion = os.path.join(settings.MEDIA_ROOT, CARPETA_CON_PREDICCION, filename)
+        
+        # Comprobar que la imagen existe antes de moverla
+        if os.path.exists(path_imagen_sin_prediccion):
+            os.rename(path_imagen_sin_prediccion, path_imagen_con_prediccion)
+        else:
+            return JsonResponse({'success': False, 'error': 'No se encontró la imagen sin predicción.'})
+
+        # Actualizar la ruta de la imagen en la base de datos (directorio con predicción)
+        nueva_radiografia.image_radiograph = os.path.join(CARPETA_CON_PREDICCION, filename)
+        nueva_radiografia.save()
+
+        # Guardar el análisis en la base de datos
+        nuevo_analisis = Analysis(
+            radiograph=nueva_radiografia,
+            detection_radiograph=deteccion,
+            prediction_radiograph=f"Precisión: {accuracy:.2f}%"
+        )
+        nuevo_analisis.save()
+
+        # Retornar los datos para actualizar la tabla en el frontend
         return JsonResponse({
             'success': True,
-            'fecha': nueva_radiografia.date_radiograph,
-            'imagen': imagen_base64,
-            'deteccion': 'Pendiente'
+            'fecha': nueva_radiografia.date_radiograph.strftime("%d-%m-%Y"),  # Formato D-M-Y
+            'imagen': os.path.join(settings.MEDIA_URL, nueva_radiografia.image_radiograph),
+            'deteccion': nuevo_analisis.detection_radiograph,
         })
+
     return JsonResponse({'success': False})

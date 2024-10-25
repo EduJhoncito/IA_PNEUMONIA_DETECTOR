@@ -1,4 +1,6 @@
 from django.urls import path
+from django.conf import settings
+from django.conf.urls.static import static  # Agrega esta línea
 from . import views
 
 urlpatterns = [
@@ -10,3 +12,6 @@ urlpatterns = [
     path('buscar_paciente/', views.buscar_paciente, name='buscar_paciente'),
     path('agregar_radiografia/<int:paciente_id>', views.agregar_radiografia, name='agregar_radiografia'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
