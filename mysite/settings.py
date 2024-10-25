@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'myapp'
+    'myapp',  # Tu aplicación personalizada
 ]
 
 MIDDLEWARE = [
@@ -121,6 +121,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# MEDIA CONFIGURATION
+# La URL pública base para los archivos multimedia (imágenes).
+MEDIA_URL = '/media/'
+
+# El directorio donde se almacenarán los archivos multimedia en el servidor.
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

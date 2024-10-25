@@ -49,32 +49,22 @@
                   </thead>
                   <tbody>
                     {% if radiografias %}
-                      {% for radiografia in radiografias %}
+                        {% for radiografia in radiografias %}
                         <tr>
-                            <!-- Forzar el formato de la fecha a YYYY-MM-DD -->
-                            <td>{{ radiografia.date_radiograph|date:"d-m-Y" }}</td>
-          
-                            <!-- Mostrar la imagen de la radiografía -->
+                            <td>{{ radiografia.date_radiograph }}</td>
                             <td>
-                              <img src="{{ MEDIA_URL }}{{ imagen }}" alt="Radiografía" width="150" height="150">
+                                <img src="{{ MEDIA_URL }}{{ radiografia.image_radiograph }}" alt="Radiografía" style="max-width: 100px;" />
                             </td>
-                                      
-                            <!-- Si no hay detección, mostrar "Pendiente" -->
-                            <td>
-                                {% if radiografia.analisis.detection_radiograph %}
-                                    {{ radiografia.analisis.detection_radiograph }}
-                                {% else %}
-                                    Pendiente
-                                {% endif %}
-                            </td>
+                            <td>{{ radiografia.analysis.detection_radiograph }}</td> <!-- Aquí se debe mostrar el texto de la detección -->
                         </tr>
-                      {% endfor %}
+                        {% endfor %}
                     {% else %}
-                      <tr>
-                        <td colspan="3">No se registraton radiografias.</td>
-                      </tr>
+                        <tr>
+                            <td colspan="3">No se registraron radiografías.</td>
+                        </tr>
                     {% endif %}
-                  </tbody>
+                </tbody>
+                
               </table>              
           </div>
           
