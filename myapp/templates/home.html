@@ -55,7 +55,8 @@
                             <td>
                                 <img src="{{ MEDIA_URL }}{{ radiografia.image_radiograph }}" alt="Radiografía" style="max-width: 100px;" />
                             </td>
-                            <td>{{ radiografia.analysis.detection_radiograph }}</td> <!-- Aquí se debe mostrar el texto de la detección -->
+                            <td>{{ radiografia.analysis.detection_radiograph }}<a id="show-heatmap" href="{% url 'ver_heatmap' radiografia.patient.id_patient radiografia.id %}">Detalles</a>
+                            </td><!-- Aquí se debe mostrar el texto de la detección -->
                         </tr>
                         {% endfor %}
                     {% else %}

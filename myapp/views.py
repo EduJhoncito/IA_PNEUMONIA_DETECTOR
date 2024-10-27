@@ -243,3 +243,19 @@ def agregar_radiografia(request, paciente_id):
         })
 
     return JsonResponse({'success': False})
+
+def ver_heatmap(request, paciente_id, radiografia_id):
+    try:
+        paciente = Patient.objects.get(id_patient=paciente_id)
+        radiografia = Radiograph.objects.get(id=radiografia_id, patient=paciente)
+        radiografia.analysis = radiografia.analysis_set.first() if radiografia.analysis_set.exists() else None
+
+        return render(request, 'heatMap.html', {
+            'paciente': paciente,
+            'radiografia': radiografia,
+            'MEDIA_URL': settings.MEDIA_URL,
+        })
+    except Patient.DoesNotExist:
+        return render(request, 'heatMap.html', {'error_message': 'Paciente no encontrado'})
+    except Radiograph.DoesNotExist:
+        return render(request, 'heatMap.html', {'error_message': 'Radiografía no encontrada'})
