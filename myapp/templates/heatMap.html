@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalles de la detección</title>
+    <link rel="stylesheet" href="{% static 'styles/home.css' %}">
+</head>
+<body>
+    <h1>Detalles de la detección</h1>
+
+    {% if paciente %}
+        <h3>Datos del paciente:</h3>
+        <p>Nombre: {{ paciente.name_patient }}</p>
+        <p>DNI: {{ paciente.dni_patient }}</p>
+
+        <div class="container-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Radiografía</th>
+                        <th>Análisis</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if radiografia %}
+                        <tr>
+                            <td>
+                                <img src="{{ MEDIA_URL }}{{ radiografia.image_radiograph }}" alt="Radiografía" style="max-width: 300px;" />
+                            </td>
+                            <td>
+                                <p>{{ radiografia.analysis.detection_radiograph }}</p>
+                                <p>{{ radiografia.analysis.prediction_radiograph }}</p>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="2">No se encontraron detalles para esta radiografía.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>{{ error_message }}</p>
+    {% endif %}
+</body>
+</html>
