@@ -11,7 +11,7 @@ urlpatterns = [
     path('registrar_paciente/', views.registrar_paciente, name='registrar_paciente'),
     path('buscar_paciente/', views.buscar_paciente, name='buscar_paciente'),
     path('agregar_radiografia/<int:paciente_id>', views.agregar_radiografia, name='agregar_radiografia'),
-    path('ver_heatmap/<int:paciente_id>/<int:radiografia_id>/', views.ver_heatmap, name='ver_heatmap'),
+    path('ver_heatmap/<int:radiografia_id>/', views.ver_heatmap, name='ver_heatmap'),
 ]
 
 if settings.DEBUG:

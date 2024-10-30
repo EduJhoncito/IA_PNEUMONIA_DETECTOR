@@ -197,7 +197,7 @@ def agregar_radiografia(request, paciente_id):
 
         # Guardar el path de la imagen en la base de datos (directorio sin predicción)
         nueva_radiografia = Radiograph(
-            date_radiograph=datetime.date.today(),  # Formateo correcto de la fecha
+            date_radiograph=datetime.date.today(),
             image_radiograph=os.path.join(CARPETA_SIN_PREDICCION, filename),
             patient=paciente
         )
@@ -206,7 +206,6 @@ def agregar_radiografia(request, paciente_id):
         # Realizar la predicción utilizando el path de la imagen
         predicted_class, accuracy = predict_image_class(path_imagen_sin_prediccion)
 
-        # Mapear la clase a un resultado de detección amigable
         deteccion = {
             'BACTERIANA': 'Neumonía bacteriana',
             'NORMAL': 'Sano',
@@ -215,14 +214,9 @@ def agregar_radiografia(request, paciente_id):
 
         # Mover la imagen a la carpeta "con predicción"
         path_imagen_con_prediccion = os.path.join(settings.MEDIA_ROOT, CARPETA_CON_PREDICCION, filename)
-        
-        # Comprobar que la imagen existe antes de moverla
         if os.path.exists(path_imagen_sin_prediccion):
             os.rename(path_imagen_sin_prediccion, path_imagen_con_prediccion)
-        else:
-            return JsonResponse({'success': False, 'error': 'No se encontró la imagen sin predicción.'})
 
-        # Actualizar la ruta de la imagen en la base de datos (directorio con predicción)
         nueva_radiografia.image_radiograph = os.path.join(CARPETA_CON_PREDICCION, filename)
         nueva_radiografia.save()
 
@@ -237,25 +231,22 @@ def agregar_radiografia(request, paciente_id):
         # Retornar los datos para actualizar la tabla en el frontend
         return JsonResponse({
             'success': True,
-            'fecha': nueva_radiografia.date_radiograph.strftime("%d-%m-%Y"),  # Formato D-M-Y
+            'fecha': nueva_radiografia.date_radiograph.strftime("%d-%m-%Y"),
             'imagen': os.path.join(settings.MEDIA_URL, nueva_radiografia.image_radiograph),
             'deteccion': nuevo_analisis.detection_radiograph,
+            'radiografia_id': nueva_radiografia.id  # Incluimos el id de la radiografía
         })
 
     return JsonResponse({'success': False})
 
-def ver_heatmap(request, paciente_id, radiografia_id):
+def ver_heatmap(request, radiografia_id):
     try:
-        paciente = Patient.objects.get(id_patient=paciente_id)
-        radiografia = Radiograph.objects.get(id=radiografia_id, patient=paciente)
-        radiografia.analysis = radiografia.analysis_set.first() if radiografia.analysis_set.exists() else None
-
-        return render(request, 'heatMap.html', {
-            'paciente': paciente,
-            'radiografia': radiografia,
-            'MEDIA_URL': settings.MEDIA_URL,
-        })
-    except Patient.DoesNotExist:
-        return render(request, 'heatMap.html', {'error_message': 'Paciente no encontrado'})
+        radiografia = Radiograph.objects.get(id=radiografia_id)
     except Radiograph.DoesNotExist:
-        return render(request, 'heatMap.html', {'error_message': 'Radiografía no encontrada'})
+        return redirect('home')  # Redirigir si no existe la radiografía
+
+    return render(request, 'heatMap.html', {
+        'radiografia': radiografia,
+        'paciente': radiografia.patient,  # Pasar el paciente asociado
+        'MEDIA_URL': settings.MEDIA_URL,
+    })

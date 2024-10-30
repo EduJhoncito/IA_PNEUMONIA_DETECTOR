@@ -2,78 +2,76 @@
 {% load custom_filters %}
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Detector de neumonía</title>
-        <link rel="stylesheet" href="{% static 'styles/home.css' %}">
-    </head>
-    <body>
-        <div class="container-search-patient">
-          <form method="GET" action="{% url 'buscar_paciente' %}">
-              <p>Ingrese el DNI del paciente:</p>
-              <input type="text" name="dni" placeholder="DNI">
-              <button type="submit">Buscar Paciente</button>
-          </form>
-        </div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector de neumonía</title>
+    <link rel="stylesheet" href="{% static 'styles/home.css' %}">
+</head>
+<body>
+    <div class="container-search-patient">
+      <form method="GET" action="{% url 'buscar_paciente' %}">
+          <p>Ingrese el DNI del paciente:</p>
+          <input type="text" name="dni" placeholder="DNI">
+          <button type="submit">Buscar Paciente</button>
+      </form>
+    </div>
 
-        <div class="container-add-buttons">
-            <a id="add-patient-btn" href="{% url 'registrar_paciente' %}">Agregar paciente</a>
-            <br>
-            {% if paciente %}
-                <a id="add-radiograhp-btn" href="#">Agregar radiografía</a>
-                <input type="file" id="file-input" name="radiograph_image" accept="image/*" style="display: none;">
-
-                <!-- Aquí incluimos el token CSRF directamente en el HTML -->
-                <script>
-                    // Incluimos el token CSRF y el ID del paciente dentro del script
-                    const csrftoken = "{{ csrf_token }}";  // Obtén el token CSRF directamente desde Django
-                    const pacienteId = "{{ paciente.id_patient }}";  // El ID del paciente desde Django
-                </script>
-            {% endif %}
-        </div>
-
+    <div class="container-add-buttons">
+        <a id="add-patient-btn" href="{% url 'registrar_paciente' %}">Agregar paciente</a>
+        <br>
         {% if paciente %}
-            <h3>Datos del paciente:</h3>
-            <p>Nombre: {{ paciente.name_patient }}</p>
-            <p>DNI: {{ paciente.dni_patient }}</p>
+            <a id="add-radiograhp-btn" href="#">Agregar radiografía</a>
+            <input type="file" id="file-input" name="radiograph_image" accept="image/*" style="display: none;">
 
-            <div class="container-table">
-              <table>
-                  <thead>
-                    <tr>
-                      <th>Fecha</th>
-                      <th>Radiografía</th>
-                      <th>Detección</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% if radiografias %}
-                        {% for radiografia in radiografias %}
-                        <tr>
-                            <td>{{ radiografia.date_radiograph }}</td>
-                            <td>
-                                <img src="{{ MEDIA_URL }}{{ radiografia.image_radiograph }}" alt="Radiografía" style="max-width: 100px;" />
-                            </td>
-                            <td>{{ radiografia.analysis.detection_radiograph }}<a id="show-heatmap" href="{% url 'ver_heatmap' radiografia.patient.id_patient radiografia.id %}">Detalles</a>
-                            </td><!-- Aquí se debe mostrar el texto de la detección -->
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="3">No se registraron radiografías.</td>
-                        </tr>
-                    {% endif %}
-                </tbody>
-                
-              </table>              
-          </div>
-          
-          
-        {% else %}
-            <p>{{ error_message }}</p>
+            <!-- Aquí incluimos el token CSRF directamente en el HTML -->
+            <script>
+                // Incluimos el token CSRF y el ID del paciente dentro del script
+                const csrftoken = "{{ csrf_token }}";  // Obtén el token CSRF directamente desde Django
+                const pacienteId = "{{ paciente.id_patient }}";  // El ID del paciente desde Django
+            </script>
         {% endif %}
+    </div>
 
-        <script src="{% static 'scripts/home.js' %}"></script>
-      </body>
+    {% if paciente %}
+        <h3>Datos del paciente:</h3>
+        <p>Nombre: {{ paciente.name_patient }}</p>
+        <p>DNI: {{ paciente.dni_patient }}</p>
+
+        <div class="container-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Radiografía</th>
+                    <th>Detección</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if radiografias %}
+                    {% for radiografia in radiografias %}
+                    <tr>
+                        <td>{{ radiografia.date_radiograph }}</td>
+                        <td>
+                            <img src="{{ MEDIA_URL }}{{ radiografia.image_radiograph }}" alt="Radiografía" style="max-width: 100px;" />
+                        </td>
+                        <td>{{ radiografia.analysis.detection_radiograph }}
+                            <a href="{% url 'ver_heatmap' radiografia.id %}" class="btn-details">Detalles</a> 
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4">No se registraron radiografías.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>              
+        </div>
+    {% else %}
+        <p>{{ error_message }}</p>
+    {% endif %}
+
+    <script src="{% static 'scripts/home.js' %}"></script>
+</body>
 </html>
