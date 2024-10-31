@@ -38,37 +38,35 @@
             <p>Nombre: {{ paciente.name_patient }}</p>
             <p>DNI: {{ paciente.dni_patient }}</p>
 
-            <div class="container-table">
-              <table>
-                  <thead>
+        <!-- Parte del HTML relevante -->
+        <div class="container-table">
+            <table>
+                <thead>
                     <tr>
-                      <th>Fecha</th>
-                      <th>Radiografía</th>
-                      <th>Detección</th>
+                        <th>Fecha</th>
+                        <th>Radiografía</th>
+                        <th>Detección</th>
+                        <th>Detalles</th>
                     </tr>
-                  </thead>
-                  <tbody>
+                </thead>
+                <tbody>
                     {% if radiografias %}
                         {% for radiografia in radiografias %}
                         <tr>
                             <td>{{ radiografia.date_radiograph }}</td>
-                            <td>
-                                <img src="{{ MEDIA_URL }}{{ radiografia.image_radiograph }}" alt="Radiografía" style="max-width: 100px;" />
-                            </td>
-                            <td>{{ radiografia.analysis.detection_radiograph }}<a id="show-heatmap" href="{% url 'ver_heatmap' radiografia.patient.id_patient radiografia.id %}">Detalles</a>
-                            </td><!-- Aquí se debe mostrar el texto de la detección -->
+                            <td><img src="{{ MEDIA_URL }}{{ radiografia.image_radiograph }}" alt="Radiografía" style="max-width: 100px;" /></td>
+                            <td>{{ radiografia.analysis.detection_radiograph }}</td>
+                            <td><a href="{% url 'ver_heatmap' radiografia.patient.id_patient radiografia.id %}" class="btn-details">Ver</a></td>
                         </tr>
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="3">No se registraron radiografías.</td>
+                            <td colspan="4">No se registraron radiografías.</td>
                         </tr>
                     {% endif %}
                 </tbody>
-                
-              </table>              
-          </div>
-          
+            </table>              
+        </div>
           
         {% else %}
             <p>{{ error_message }}</p>

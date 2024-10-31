@@ -197,7 +197,7 @@ def agregar_radiografia(request, paciente_id):
 
         # Guardar el path de la imagen en la base de datos (directorio sin predicción)
         nueva_radiografia = Radiograph(
-            date_radiograph=datetime.date.today(),  # Formateo correcto de la fecha
+            date_radiograph=datetime.date.today(),
             image_radiograph=os.path.join(CARPETA_SIN_PREDICCION, filename),
             patient=paciente
         )
@@ -215,7 +215,7 @@ def agregar_radiografia(request, paciente_id):
 
         # Mover la imagen a la carpeta "con predicción"
         path_imagen_con_prediccion = os.path.join(settings.MEDIA_ROOT, CARPETA_CON_PREDICCION, filename)
-        
+
         # Comprobar que la imagen existe antes de moverla
         if os.path.exists(path_imagen_sin_prediccion):
             os.rename(path_imagen_sin_prediccion, path_imagen_con_prediccion)
@@ -234,12 +234,13 @@ def agregar_radiografia(request, paciente_id):
         )
         nuevo_analisis.save()
 
-        # Retornar los datos para actualizar la tabla en el frontend
+        # Retornar los datos para actualizar la tabla en el frontend, incluyendo el id de la radiografía
         return JsonResponse({
             'success': True,
-            'fecha': nueva_radiografia.date_radiograph.strftime("%d-%m-%Y"),  # Formato D-M-Y
+            'fecha': nueva_radiografia.date_radiograph.strftime("%d-%m-%Y"),
             'imagen': os.path.join(settings.MEDIA_URL, nueva_radiografia.image_radiograph),
             'deteccion': nuevo_analisis.detection_radiograph,
+            'radiografia_id': nueva_radiografia.id,  # Incluir el ID de la nueva radiografía
         })
 
     return JsonResponse({'success': False})
