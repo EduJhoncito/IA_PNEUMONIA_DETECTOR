@@ -188,8 +188,8 @@ def buscar_paciente(request):
 
 def agregar_radiografia(request, paciente_id):
     if request.method == 'POST':
-        image_file = request.FILES['radiograph_image']
-        paciente = Patient.objects.get(id_patient=paciente_id)
+        image_file = request.FILES.get('radiograph_image')
+        paciente = get_object_or_404(Patient, id_patient=paciente_id)
 
         # Guardar la imagen en la carpeta "sin predicción"
         fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, CARPETA_SIN_PREDICCION))
@@ -214,14 +214,15 @@ def agregar_radiografia(request, paciente_id):
             'VIRAL': 'Neumonía vírica',
         }.get(predicted_class, 'Sano')
 
-        # Mover la imagen a la carpeta "con predicción"
+        # Crear un nombre de archivo único si ya existe en la carpeta "con predicción"
         path_imagen_con_prediccion = os.path.join(settings.MEDIA_ROOT, CARPETA_CON_PREDICCION, filename)
+        if os.path.exists(path_imagen_con_prediccion):
+            base, ext = os.path.splitext(filename)
+            filename = f"{base}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}{ext}"
+            path_imagen_con_prediccion = os.path.join(settings.MEDIA_ROOT, CARPETA_CON_PREDICCION, filename)
 
-        # Comprobar que la imagen existe antes de moverla
-        if os.path.exists(path_imagen_sin_prediccion):
-            os.rename(path_imagen_sin_prediccion, path_imagen_con_prediccion)
-        else:
-            return JsonResponse({'success': False, 'error': 'No se encontró la imagen sin predicción.'})
+        # Mover la imagen a la carpeta "con predicción"
+        os.rename(path_imagen_sin_prediccion, path_imagen_con_prediccion)
 
         # Actualizar la ruta de la imagen en la base de datos (directorio con predicción)
         nueva_radiografia.image_radiograph = os.path.join(CARPETA_CON_PREDICCION, filename)
@@ -235,13 +236,13 @@ def agregar_radiografia(request, paciente_id):
         )
         nuevo_analisis.save()
 
-        # Retornar los datos para actualizar la tabla en el frontend, incluyendo el id de la radiografía
+        # Retornar los datos para actualizar la tabla en el frontend
         return JsonResponse({
             'success': True,
             'fecha': nueva_radiografia.date_radiograph.strftime("%d-%m-%Y"),
             'imagen': os.path.join(settings.MEDIA_URL, nueva_radiografia.image_radiograph),
             'deteccion': nuevo_analisis.detection_radiograph,
-            'radiografia_id': nueva_radiografia.id,  # Incluir el ID de la nueva radiografía
+            'radiografia_id': nueva_radiografia.id,
         })
 
     return JsonResponse({'success': False})
@@ -261,58 +262,3 @@ def ver_heatmap(request, paciente_id, radiografia_id):
         return render(request, 'heatMap.html', {'error_message': 'Paciente no encontrado'})
     except Radiograph.DoesNotExist:
         return render(request, 'heatMap.html', {'error_message': 'Radiografía no encontrada'})
-    
-def agregar_radiografia(request, paciente_id):
-    if request.method == 'POST':
-        image_file = request.FILES.get('radiograph_image')
-        paciente = get_object_or_404(Patient, id_patient=paciente_id)
-
-        # Guardar la imagen en la carpeta "sin predicción"
-        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, CARPETA_SIN_PREDICCION))
-        filename = fs.save(image_file.name, image_file)
-        path_imagen_sin_prediccion = fs.path(filename)
-
-        # Guardar el path de la imagen en la base de datos
-        nueva_radiografia = Radiograph(
-            date_radiograph=datetime.date.today(),
-            image_radiograph=os.path.join(CARPETA_SIN_PREDICCION, filename),
-            patient=paciente
-        )
-        nueva_radiografia.save()
-
-        # Realizar la predicción
-        predicted_class, accuracy = predict_image_class(path_imagen_sin_prediccion)
-
-        # Mapear la clase a un resultado amigable
-        deteccion = {
-            'BACTERIANA': 'Neumonía bacteriana',
-            'NORMAL': 'Sano',
-            'VIRAL': 'Neumonía vírica',
-        }.get(predicted_class, 'Sano')
-
-        # Mover la imagen a la carpeta "con predicción"
-        path_imagen_con_prediccion = os.path.join(settings.MEDIA_ROOT, CARPETA_CON_PREDICCION, filename)
-        os.rename(path_imagen_sin_prediccion, path_imagen_con_prediccion)
-
-        # Actualizar la ruta de la imagen en la base de datos
-        nueva_radiografia.image_radiograph = os.path.join(CARPETA_CON_PREDICCION, filename)
-        nueva_radiografia.save()
-
-        # Guardar el análisis en la base de datos
-        nuevo_analisis = Analysis(
-            radiograph=nueva_radiografia,
-            detection_radiograph=deteccion,
-            prediction_radiograph=f"Precisión: {accuracy:.2f}%"
-        )
-        nuevo_analisis.save()
-
-        # Retornar datos para el frontend
-        return JsonResponse({
-            'success': True,
-            'fecha': nueva_radiografia.date_radiograph.strftime("%d-%m-%Y"),
-            'imagen': os.path.join(settings.MEDIA_URL, nueva_radiografia.image_radiograph),
-            'deteccion': nuevo_analisis.detection_radiograph,
-            'radiografia_id': nueva_radiografia.id,
-        })
-
-    return JsonResponse({'success': False})
