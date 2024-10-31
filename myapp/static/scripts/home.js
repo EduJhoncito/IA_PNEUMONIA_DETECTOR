@@ -20,23 +20,24 @@ document.addEventListener("DOMContentLoaded", function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Si la subida fue exitosa, agrega la nueva fila a la tabla sin recargar la página
                 const tableBody = document.querySelector("table tbody");
-                const newRow = document.createElement("tr");
 
+                // Crea una nueva fila con los datos de la radiografía
+                const newRow = document.createElement("tr");
                 newRow.innerHTML = `
                     <td>${data.fecha}</td>
                     <td><img src="${data.imagen}" alt="Radiografía" style="max-width: 100px;" /></td>
                     <td>${data.deteccion}</td>
-                    <td><a href="/ver_heatmap/${pacienteId}/${data.radiografia_id}" class="btn-details">Detalles</a></td>
+                    <td><a href="/ver_heatmap/${pacienteId}/${data.radiografia_id}" class="btn-details">Ver</a></td>
                 `;
 
+                // Agrega la nueva fila a la tabla
                 tableBody.appendChild(newRow);
 
-                // Buscar y eliminar la fila con el mensaje "No se registraron radiografías"
+                // Elimina la fila de "No se registraron radiografías" si existe
                 const noRecordsMessage = document.querySelector("table tbody tr td[colspan='4']");
                 if (noRecordsMessage) {
-                    noRecordsMessage.parentElement.remove();  // Elimina la fila completa
+                    noRecordsMessage.parentElement.remove();
                 }
             } else {
                 alert("Hubo un problema al subir la radiografía.");
