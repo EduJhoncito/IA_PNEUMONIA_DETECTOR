@@ -10,6 +10,9 @@
 <body>
     <h1>Detalles de la detección</h1>
 
+    <!-- Botón de regreso -->
+    <a id="back-button" href="{% url 'buscar_paciente' %}?dni={{ paciente.dni_patient }}">Volver</a>
+
     {% if paciente %}
         <h3>Datos del paciente:</h3>
         <p>Nombre: {{ paciente.name_patient }}</p>
