@@ -171,8 +171,8 @@ def buscar_paciente(request):
     paciente = Patient.objects.filter(dni_patient=dni).first()
     
     if paciente:
-        # Aquí reemplazas select_related con prefetch_related para optimizar
-        radiografias = Radiograph.objects.filter(patient=paciente).prefetch_related('analysis_set')
+        # Obtener las radiografías ordenadas por fecha de manera descendente
+        radiografias = Radiograph.objects.filter(patient=paciente).prefetch_related('analysis_set').order_by('-date_radiograph')
         for radiografia in radiografias:
             # Asegúrate de que cada radiografía tiene un análisis asociado
             radiografia.analysis = radiografia.analysis_set.first() if radiografia.analysis_set.exists() else None
