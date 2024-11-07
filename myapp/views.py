@@ -14,8 +14,6 @@ from django.core.files.storage import FileSystemStorage
 from .ia_model import predict_image_class
 import datetime
 from django.shortcuts import get_object_or_404
-from datetime import timedelta
-from django.utils import timezone
 
 # Define los directorios donde se guardarán las imágenes
 CARPETA_SIN_PREDICCION = 'imagenes_sin_prediccion/'
@@ -192,23 +190,6 @@ def agregar_radiografia(request, paciente_id):
     if request.method == 'POST':
         image_file = request.FILES.get('radiograph_image')
         paciente = get_object_or_404(Patient, id_patient=paciente_id)
-
-        # Verificar si ya existe una radiografía de este paciente en la última semana
-        now = timezone.now().date()  # Obtener la fecha actual
-        semana_pasada = now - timedelta(weeks=1)  # Fecha hace 7 días
-
-        # Verificar si el paciente ya tiene una radiografía en la última semana
-        existe_radiografia = Radiograph.objects.filter(
-            patient=paciente, 
-            date_radiograph__gte=semana_pasada
-        ).exists()
-
-        if existe_radiografia:
-            # Si ya existe una radiografía, devolver un mensaje de error más específico
-            return JsonResponse({
-                'success': False,
-                'error': f'Ya has subido una radiografía en la última semana. Intenta nuevamente después de {semana_pasada.strftime("%d-%m-%Y")}.'
-            })
 
         # Guardar la imagen en la carpeta "sin predicción"
         fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, CARPETA_SIN_PREDICCION))
