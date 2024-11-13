@@ -14,6 +14,8 @@ from django.core.files.storage import FileSystemStorage
 from .ia_model import predict_image_class
 import datetime
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from datetime import timedelta
 
 # Define los directorios donde se guardarán las imágenes
 CARPETA_SIN_PREDICCION = 'imagenes_sin_prediccion/'
@@ -191,12 +193,27 @@ def agregar_radiografia(request, paciente_id):
         image_file = request.FILES.get('radiograph_image')
         paciente = get_object_or_404(Patient, id_patient=paciente_id)
 
-        # Guardar la imagen en la carpeta "sin predicción"
+        # Obtener la última radiografía registrada del paciente
+        ultima_radiografia = Radiograph.objects.filter(patient=paciente).order_by('-date_radiograph').first()
+
+        # Verificar si han pasado al menos 10 días desde la última radiografía
+        if ultima_radiografia:
+            # Calcular la diferencia de días
+            dias_diferencia = (timezone.now().date() - ultima_radiografia.date_radiograph).days
+
+            # Si no han pasado al menos 10 días, devolver un error
+            if dias_diferencia < 10:
+                return JsonResponse({
+                    'success': False,
+                    'mensaje': f'No han pasado 10 días desde la última radiografía. Debes esperar {10 - dias_diferencia} días más.'
+                })
+
+        # Si todo está bien, proceder con la carga de la nueva radiografía
         fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, CARPETA_SIN_PREDICCION))
         filename = fs.save(image_file.name, image_file)
         path_imagen_sin_prediccion = fs.path(filename)
 
-        # Guardar el path de la imagen en la base de datos (directorio sin predicción)
+        # Guardar la radiografía en la base de datos
         nueva_radiografia = Radiograph(
             date_radiograph=datetime.date.today(),
             image_radiograph=os.path.join(CARPETA_SIN_PREDICCION, filename),
@@ -204,7 +221,7 @@ def agregar_radiografia(request, paciente_id):
         )
         nueva_radiografia.save()
 
-        # Realizar la predicción utilizando el path de la imagen
+        # Realizar la predicción utilizando la imagen subida
         predicted_class, accuracy = predict_image_class(path_imagen_sin_prediccion)
 
         # Mapear la clase a un resultado de detección amigable
@@ -214,21 +231,20 @@ def agregar_radiografia(request, paciente_id):
             'VIRAL': 'Neumonía vírica',
         }.get(predicted_class, 'Sano')
 
-        # Crear un nombre de archivo único si ya existe en la carpeta "con predicción"
+        # Mover la imagen a la carpeta con predicción
         path_imagen_con_prediccion = os.path.join(settings.MEDIA_ROOT, CARPETA_CON_PREDICCION, filename)
         if os.path.exists(path_imagen_con_prediccion):
             base, ext = os.path.splitext(filename)
             filename = f"{base}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}{ext}"
             path_imagen_con_prediccion = os.path.join(settings.MEDIA_ROOT, CARPETA_CON_PREDICCION, filename)
 
-        # Mover la imagen a la carpeta "con predicción"
         os.rename(path_imagen_sin_prediccion, path_imagen_con_prediccion)
 
-        # Actualizar la ruta de la imagen en la base de datos (directorio con predicción)
+        # Actualizar la base de datos con la nueva imagen
         nueva_radiografia.image_radiograph = os.path.join(CARPETA_CON_PREDICCION, filename)
         nueva_radiografia.save()
 
-        # Guardar el análisis en la base de datos
+        # Crear un análisis de la radiografía
         nuevo_analisis = Analysis(
             radiograph=nueva_radiografia,
             detection_radiograph=deteccion,
@@ -236,7 +252,7 @@ def agregar_radiografia(request, paciente_id):
         )
         nuevo_analisis.save()
 
-        # Retornar los datos para actualizar la tabla en el frontend
+        # Devolver una respuesta con la nueva radiografía
         return JsonResponse({
             'success': True,
             'fecha': nueva_radiografia.date_radiograph.strftime("%d-%m-%Y"),

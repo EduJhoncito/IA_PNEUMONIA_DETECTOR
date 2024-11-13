@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function() {
     const fileInput = document.getElementById("file-input");
     const addRadiographButton = document.getElementById("add-radiograhp-btn");
-    
+
     addRadiographButton.addEventListener("click", function() {
         fileInput.click();  // Simula un clic para abrir el selector de archivos
     });
@@ -40,7 +40,8 @@ document.addEventListener("DOMContentLoaded", function() {
                     noRecordsMessage.parentElement.remove();
                 }
             } else {
-                alert("Hubo un problema al subir la radiografía.");
+                // Si no es un éxito, muestra el mensaje que venga del backend
+                alert(data.mensaje || "Hubo un problema al subir la radiografía.");
             }
         })
         .catch(error => {
