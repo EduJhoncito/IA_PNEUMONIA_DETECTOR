@@ -21,6 +21,7 @@ import cv2
 from PIL import Image
 from tensorflow.keras.models import load_model
 from tensorflow.keras import models
+from django.shortcuts import render
 
 model = load_model(os.path.join(settings.BASE_DIR, "myapp", "models", "85_mobileNetV2.h5"))
 
@@ -285,23 +286,19 @@ def agregar_radiografia(request, paciente_id):
 #         return render(request, 'heatMap.html', {'error_message': 'Radiografía no encontrada'})
     
 def ver_heatmap(request, paciente_id, radiografia_id):
-    try:
-        paciente = Patient.objects.get(id_patient=paciente_id)
-        radiografia = Radiograph.objects.get(id=radiografia_id, patient=paciente)
-        radiografia.analysis = radiografia.analysis_set.first() if radiografia.analysis_set.exists() else None
-
-        # Genera y guarda el heatmap
-        heatmap_path = generate_and_save_heatmap(radiografia)
-
-        return render(request, 'heatMap.html', {
-            'paciente': paciente,
-            'radiografia': radiografia,
-            'heatmap_url': os.path.join(settings.MEDIA_URL, 'heatmaps', f"heatmap_{radiografia.id}.png"),
-        })
-    except Patient.DoesNotExist:
-        return render(request, 'heatMap.html', {'error_message': 'Paciente no encontrado'})
-    except Radiograph.DoesNotExist:
-        return render(request, 'heatMap.html', {'error_message': 'Radiografía no encontrada'})
+    # Suponiendo que tienes un modelo para obtener el paciente y radiografía
+    paciente = get_object_or_404(Patient, id=paciente_id)
+    radiografia = get_object_or_404(Radiograph, id=radiografia_id)
+    
+    # Construir la URL del heatmap
+    heatmap_url = f"{settings.MEDIA_URL}heatmaps/heatmap_{radiografia_id}.png"
+    
+    context = {
+        'paciente': paciente,
+        'radiografia': radiografia,
+        'heatmap_url': heatmap_url,
+    }
+    return render(request, 'heatMap.html', context)
     
 def grad_cam(input_model, img_array, layer_name):
     grad_model = models.Model(
@@ -329,14 +326,14 @@ def generate_and_save_heatmap(radiograph):
     print("Ruta de la imagen:", img_path)  # Imprime la ruta para verificar
 
     try:
+        # Verifica si el archivo existe
+        if not os.path.exists(img_path):
+            raise FileNotFoundError(f"El archivo no se encontró en la ruta: {img_path}")
+
         # Abre la imagen con PIL
         with Image.open(img_path) as pil_img:
             pil_img = pil_img.resize((224, 224))  # Redimensiona la imagen con PIL
             original_img = np.array(pil_img)  # Convierte la imagen a un array de NumPy
-        
-        # Verifica que la imagen se haya cargado correctamente
-        if original_img is None:
-            raise ValueError(f"No se pudo cargar la imagen en la ruta: {img_path}")
 
         # Procesa la imagen para el modelo
         img = tf.keras.preprocessing.image.load_img(img_path, target_size=(224, 224))
@@ -346,15 +343,24 @@ def generate_and_save_heatmap(radiograph):
         # Genera el heatmap
         heatmap = grad_cam(model, img_array, layer_name="out_relu")
 
-        # Superpone el heatmap sobre la imagen original
-        heatmap_path = os.path.join(settings.MEDIA_ROOT, 'heatmaps', f"heatmap_{radiograph.id}.png")
-        os.makedirs(os.path.dirname(heatmap_path), exist_ok=True)
+        # Establece la ruta para guardar el heatmap
+        heatmap_dir = os.path.join(settings.MEDIA_ROOT, 'heatmaps')
+        os.makedirs(heatmap_dir, exist_ok=True)
+        heatmap_path = os.path.join(heatmap_dir, f"heatmap_{radiograph.id}.png")
 
+        # Superpone el heatmap sobre la imagen original
         heatmap_img = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
         superimposed_img = cv2.addWeighted(heatmap_img, 0.5, original_img, 0.5, 0)
 
+        # Guarda la imagen superpuesta con el heatmap
         cv2.imwrite(heatmap_path, superimposed_img)
+        print("Heatmap guardado en:", heatmap_path)
         return heatmap_path
+
+    except FileNotFoundError as fnf_error:
+        print(fnf_error)
+        raise ValueError(f"No se pudo cargar la imagen en la ruta: {img_path}. Error: {fnf_error}")
     
     except Exception as e:
+        print(f"Error al generar el heatmap: {e}")
         raise ValueError(f"No se pudo cargar la imagen en la ruta: {img_path}. Error: {e}")
