@@ -22,7 +22,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Radiografía</th>
+                        <th>Radiografía con Heatmap</th>
                         <th>Análisis</th>
                     </tr>
                 </thead>
@@ -30,7 +30,8 @@
                     {% if radiografia %}
                         <tr>
                             <td>
-                                <img src="{{ MEDIA_URL }}{{ radiografia.image_radiograph }}" alt="Radiografía" style="max-width: 300px;" />
+                                <!-- Muestra el heatmap en lugar de la imagen original -->
+                                <img src="{{ heatmap_url }}" alt="Radiografía con Heatmap" style="max-width: 300px;" />
                             </td>
                             <td>
                                 <p>{{ radiografia.analysis.detection_radiograph }}</p>

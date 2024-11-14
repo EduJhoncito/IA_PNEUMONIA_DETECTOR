@@ -15,6 +15,14 @@ from .ia_model import predict_image_class
 import datetime
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+import tensorflow as tf
+import numpy as np
+import cv2
+from PIL import Image
+from tensorflow.keras.models import load_model
+from tensorflow.keras import models
+
+model = load_model(os.path.join(settings.BASE_DIR, "myapp", "models", "85_mobileNetV2.h5"))
 
 # Define los directorios donde se guardarán las imágenes
 CARPETA_SIN_PREDICCION = 'imagenes_sin_prediccion/'
@@ -260,18 +268,93 @@ def agregar_radiografia(request, paciente_id):
 
     return JsonResponse({'success': False})
 
+# def ver_heatmap(request, paciente_id, radiografia_id):
+#     try:
+#         paciente = Patient.objects.get(id_patient=paciente_id)
+#         radiografia = Radiograph.objects.get(id=radiografia_id, patient=paciente)
+#         radiografia.analysis = radiografia.analysis_set.first() if radiografia.analysis_set.exists() else None
+
+#         return render(request, 'heatMap.html', {
+#             'paciente': paciente,
+#             'radiografia': radiografia,
+#             'MEDIA_URL': settings.MEDIA_URL,
+#         })
+#     except Patient.DoesNotExist:
+#         return render(request, 'heatMap.html', {'error_message': 'Paciente no encontrado'})
+#     except Radiograph.DoesNotExist:
+#         return render(request, 'heatMap.html', {'error_message': 'Radiografía no encontrada'})
+    
 def ver_heatmap(request, paciente_id, radiografia_id):
     try:
         paciente = Patient.objects.get(id_patient=paciente_id)
         radiografia = Radiograph.objects.get(id=radiografia_id, patient=paciente)
         radiografia.analysis = radiografia.analysis_set.first() if radiografia.analysis_set.exists() else None
 
+        # Genera y guarda el heatmap
+        heatmap_path = generate_and_save_heatmap(radiografia)
+
         return render(request, 'heatMap.html', {
             'paciente': paciente,
             'radiografia': radiografia,
-            'MEDIA_URL': settings.MEDIA_URL,
+            'heatmap_url': os.path.join(settings.MEDIA_URL, 'heatmaps', f"heatmap_{radiografia.id}.png"),
         })
     except Patient.DoesNotExist:
         return render(request, 'heatMap.html', {'error_message': 'Paciente no encontrado'})
     except Radiograph.DoesNotExist:
         return render(request, 'heatMap.html', {'error_message': 'Radiografía no encontrada'})
+    
+def grad_cam(input_model, img_array, layer_name):
+    grad_model = models.Model(
+        [input_model.inputs], [input_model.get_layer(layer_name).output, input_model.output]
+    )
+    
+    with tf.GradientTape() as tape:
+        conv_outputs, predictions = grad_model(img_array)
+        loss = predictions[:, np.argmax(predictions[0])]
+        
+    grads = tape.gradient(loss, conv_outputs)[0]
+    guided_grads = grads * tf.cast(grads > 0, grads.dtype)
+    conv_outputs = conv_outputs[0]
+    weights = np.mean(guided_grads, axis=(0, 1))
+    cam = np.dot(conv_outputs, weights)
+    
+    # Redimensiona y normaliza el mapa de calor
+    cam = cv2.resize(cam, (img_array.shape[1], img_array.shape[2]))
+    cam = np.maximum(cam, 0)
+    heatmap = cam / cam.max()
+    return heatmap
+
+def generate_and_save_heatmap(radiograph):
+    img_path = os.path.join(settings.MEDIA_ROOT, radiograph.image_radiograph)
+    print("Ruta de la imagen:", img_path)  # Imprime la ruta para verificar
+
+    try:
+        # Abre la imagen con PIL
+        with Image.open(img_path) as pil_img:
+            pil_img = pil_img.resize((224, 224))  # Redimensiona la imagen con PIL
+            original_img = np.array(pil_img)  # Convierte la imagen a un array de NumPy
+        
+        # Verifica que la imagen se haya cargado correctamente
+        if original_img is None:
+            raise ValueError(f"No se pudo cargar la imagen en la ruta: {img_path}")
+
+        # Procesa la imagen para el modelo
+        img = tf.keras.preprocessing.image.load_img(img_path, target_size=(224, 224))
+        img_array = tf.keras.preprocessing.image.img_to_array(img)
+        img_array = np.expand_dims(img_array, axis=0) / 255.0
+
+        # Genera el heatmap
+        heatmap = grad_cam(model, img_array, layer_name="out_relu")
+
+        # Superpone el heatmap sobre la imagen original
+        heatmap_path = os.path.join(settings.MEDIA_ROOT, 'heatmaps', f"heatmap_{radiograph.id}.png")
+        os.makedirs(os.path.dirname(heatmap_path), exist_ok=True)
+
+        heatmap_img = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
+        superimposed_img = cv2.addWeighted(heatmap_img, 0.5, original_img, 0.5, 0)
+
+        cv2.imwrite(heatmap_path, superimposed_img)
+        return heatmap_path
+    
+    except Exception as e:
+        raise ValueError(f"No se pudo cargar la imagen en la ruta: {img_path}. Error: {e}")
