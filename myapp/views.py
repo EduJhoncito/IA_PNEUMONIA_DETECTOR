@@ -14,6 +14,16 @@ from django.core.files.storage import FileSystemStorage
 from .ia_model import predict_image_class
 import datetime
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+import tensorflow as tf
+import numpy as np
+import cv2
+from PIL import Image
+from tensorflow.keras.models import load_model
+from tensorflow.keras import models
+from django.shortcuts import render
+
+model = load_model(os.path.join(settings.BASE_DIR, "myapp", "models", "85_mobileNetV2.h5"))
 
 # Define los directorios donde se guardarán las imágenes
 CARPETA_SIN_PREDICCION = 'imagenes_sin_prediccion/'
@@ -191,12 +201,25 @@ def agregar_radiografia(request, paciente_id):
         image_file = request.FILES.get('radiograph_image')
         paciente = get_object_or_404(Patient, id_patient=paciente_id)
 
+        # Obtener la última radiografía registrada del paciente
+        ultima_radiografia = Radiograph.objects.filter(patient=paciente).order_by('-date_radiograph').first()
+
+        # Verificar si han pasado al menos 10 días desde la última radiografía
+        if ultima_radiografia:
+            dias_diferencia = (timezone.now().date() - ultima_radiografia.date_radiograph).days
+
+            if dias_diferencia < 10:
+                return JsonResponse({
+                    'success': False,
+                    'mensaje': f'No han pasado 10 días desde la última radiografía. Debes esperar {10 - dias_diferencia} días más.'
+                })
+
         # Guardar la imagen en la carpeta "sin predicción"
         fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, CARPETA_SIN_PREDICCION))
         filename = fs.save(image_file.name, image_file)
         path_imagen_sin_prediccion = fs.path(filename)
 
-        # Guardar el path de la imagen en la base de datos (directorio sin predicción)
+        # Guardar la radiografía en la base de datos
         nueva_radiografia = Radiograph(
             date_radiograph=datetime.date.today(),
             image_radiograph=os.path.join(CARPETA_SIN_PREDICCION, filename),
@@ -204,7 +227,7 @@ def agregar_radiografia(request, paciente_id):
         )
         nueva_radiografia.save()
 
-        # Realizar la predicción utilizando el path de la imagen
+        # Realizar la predicción utilizando la imagen subida
         predicted_class, accuracy = predict_image_class(path_imagen_sin_prediccion)
 
         # Mapear la clase a un resultado de detección amigable
@@ -214,21 +237,20 @@ def agregar_radiografia(request, paciente_id):
             'VIRAL': 'Neumonía vírica',
         }.get(predicted_class, 'Sano')
 
-        # Crear un nombre de archivo único si ya existe en la carpeta "con predicción"
+        # Mover la imagen a la carpeta con predicción
         path_imagen_con_prediccion = os.path.join(settings.MEDIA_ROOT, CARPETA_CON_PREDICCION, filename)
         if os.path.exists(path_imagen_con_prediccion):
             base, ext = os.path.splitext(filename)
             filename = f"{base}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}{ext}"
             path_imagen_con_prediccion = os.path.join(settings.MEDIA_ROOT, CARPETA_CON_PREDICCION, filename)
 
-        # Mover la imagen a la carpeta "con predicción"
         os.rename(path_imagen_sin_prediccion, path_imagen_con_prediccion)
 
-        # Actualizar la ruta de la imagen en la base de datos (directorio con predicción)
+        # Actualizar la base de datos con la nueva imagen
         nueva_radiografia.image_radiograph = os.path.join(CARPETA_CON_PREDICCION, filename)
         nueva_radiografia.save()
 
-        # Guardar el análisis en la base de datos
+        # Crear un análisis de la radiografía
         nuevo_analisis = Analysis(
             radiograph=nueva_radiografia,
             detection_radiograph=deteccion,
@@ -236,7 +258,7 @@ def agregar_radiografia(request, paciente_id):
         )
         nuevo_analisis.save()
 
-        # Retornar los datos para actualizar la tabla en el frontend
+        # Devolver una respuesta con la nueva radiografía
         return JsonResponse({
             'success': True,
             'fecha': nueva_radiografia.date_radiograph.strftime("%d-%m-%Y"),
@@ -247,18 +269,110 @@ def agregar_radiografia(request, paciente_id):
 
     return JsonResponse({'success': False})
 
-def ver_heatmap(request, paciente_id, radiografia_id):
-    try:
-        paciente = Patient.objects.get(id_patient=paciente_id)
-        radiografia = Radiograph.objects.get(id=radiografia_id, patient=paciente)
-        radiografia.analysis = radiografia.analysis_set.first() if radiografia.analysis_set.exists() else None
+# def ver_heatmap(request, paciente_id, radiografia_id):
+#     try:
+#         paciente = Patient.objects.get(id_patient=paciente_id)
+#         radiografia = Radiograph.objects.get(id=radiografia_id, patient=paciente)
+#         radiografia.analysis = radiografia.analysis_set.first() if radiografia.analysis_set.exists() else None
 
-        return render(request, 'heatMap.html', {
-            'paciente': paciente,
-            'radiografia': radiografia,
-            'MEDIA_URL': settings.MEDIA_URL,
-        })
-    except Patient.DoesNotExist:
-        return render(request, 'heatMap.html', {'error_message': 'Paciente no encontrado'})
-    except Radiograph.DoesNotExist:
-        return render(request, 'heatMap.html', {'error_message': 'Radiografía no encontrada'})
+#         return render(request, 'heatMap.html', {
+#             'paciente': paciente,
+#             'radiografia': radiografia,
+#             'MEDIA_URL': settings.MEDIA_URL,
+#         })
+#     except Patient.DoesNotExist:
+#         return render(request, 'heatMap.html', {'error_message': 'Paciente no encontrado'})
+#     except Radiograph.DoesNotExist:
+#         return render(request, 'heatMap.html', {'error_message': 'Radiografía no encontrada'})
+    
+def grad_cam(input_model, img_array, layer_name):
+    # Crear el modelo intermedio basado en las capas necesarias para Grad-CAM
+    grad_model = tf.keras.models.Model(
+        inputs=[input_model.input], 
+        outputs=[input_model.get_layer(layer_name).output, input_model.output]
+    )
+    
+    with tf.GradientTape() as tape:
+        conv_outputs, predictions = grad_model(img_array)
+        loss = predictions[:, np.argmax(predictions[0])]
+        
+    grads = tape.gradient(loss, conv_outputs)[0]
+    guided_grads = grads * tf.cast(grads > 0, grads.dtype)
+    conv_outputs = conv_outputs[0]
+    weights = np.mean(guided_grads, axis=(0, 1))
+    cam = np.dot(conv_outputs, weights)
+    
+    # Redimensionar y normalizar el mapa de calor
+    cam = cv2.resize(cam, (img_array.shape[1], img_array.shape[2]))
+    cam = np.maximum(cam, 0)
+    heatmap = cam / cam.max() if cam.max() != 0 else cam
+    return heatmap
+
+def generate_and_save_heatmap(radiograph):
+    img_path = os.path.join(settings.MEDIA_ROOT, radiograph.image_radiograph)
+    print("Ruta de la imagen:", img_path)
+
+    try:
+        # Verifica si el archivo existe
+        if not os.path.exists(img_path):
+            raise FileNotFoundError(f"El archivo no se encontró en la ruta: {img_path}")
+
+        # Abre la imagen con PIL y cambia el tamaño
+        with Image.open(img_path) as pil_img:
+            pil_img = pil_img.resize((224, 224))
+            original_img = np.array(pil_img)
+
+        # Asegúrate de que la imagen tiene 3 canales
+        if len(original_img.shape) == 2:  # Imagen en escala de grises
+            original_img = np.stack((original_img,) * 3, axis=-1)
+
+        # Procesa la imagen para el modelo
+        img_array = np.expand_dims(original_img, axis=0) / 255.0
+        print("Tamaño de img_array:", img_array.shape)
+
+        # Genera el heatmap
+        heatmap = grad_cam(model, img_array, layer_name="out_relu")
+
+        # Verifica si el directorio existe o créalo
+        heatmap_dir = os.path.join(settings.MEDIA_ROOT, 'heatmaps')
+        if not os.path.exists(heatmap_dir):
+            os.makedirs(heatmap_dir)
+            print(f"Carpeta {heatmap_dir} creada para almacenar heatmaps.")
+
+        heatmap_path = os.path.join(heatmap_dir, f"heatmap_{radiograph.id}.png")
+        print(f"Guardando el heatmap en: {heatmap_path}")
+
+        # Aplica el colormap y superpone la imagen original
+        heatmap_img = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
+        superimposed_img = cv2.addWeighted(heatmap_img, 0.5, original_img, 0.5, 0)
+
+        # Convierte la imagen resultante a PIL antes de guardarla
+        superimposed_img_pil = Image.fromarray(cv2.cvtColor(superimposed_img, cv2.COLOR_BGR2RGB))
+        superimposed_img_pil.save(heatmap_path, format='PNG')
+        
+        print("Heatmap guardado exitosamente en:", heatmap_path)
+        return heatmap_path
+
+    except Exception as e:
+        print(f"Error al generar el heatmap: {e}")
+        return None
+    
+# Vista para mostrar el heatmap y análisis
+def ver_heatmap(request, paciente_id, radiografia_id):
+    paciente = get_object_or_404(Patient, id_patient=paciente_id)
+    radiografia = get_object_or_404(Radiograph, id=radiografia_id)
+    
+    # Genera el heatmap si no existe
+    heatmap_path = generate_and_save_heatmap(radiografia)
+    heatmap_url = os.path.join(settings.MEDIA_URL, 'heatmaps', f"heatmap_{radiografia.id}.png") if heatmap_path else None
+
+    # Verifica si existe el análisis
+    analysis = radiografia.analysis_set.first()
+
+    context = {
+        'paciente': paciente,
+        'radiografia': radiografia,
+        'heatmap_url': heatmap_url,
+        'analysis': analysis
+    }
+    return render(request, 'heatMap.html', context)
